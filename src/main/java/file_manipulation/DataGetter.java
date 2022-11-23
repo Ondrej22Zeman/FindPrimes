@@ -1,3 +1,5 @@
+package file_manipulation;
+
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -8,58 +10,59 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class GetData {
+public class DataGetter {
 
     //zpracování dat ze souboru
-    public ArrayList<Integer> processData(OpenFile openFile) throws IOException {
-        File file = openFile.getFile();
-        FindPrimes findPrimes = new FindPrimes();
-        ArrayList<Integer> primes = new ArrayList<Integer>();
-
-        //Při vypnutí okna bez výběru souboru se vrátí prázdný soubor a nic se nevypíše
-        if (file == null) {
-            primes.add(0);
-            return primes;
-        }
-        ;
+    public ArrayList<Integer> getDataFromFile(String path) throws IOException {
+        File file = new File(path);
 
         FileInputStream fileInputStream = new FileInputStream(file);
         Workbook workbook;
 
         //podle formátu souboru se zvolí metoda čtení
-        if (Objects.equals(openFile.getExtension(), ".xls")) {
+        if (Objects.equals(getExtension(path), ".xls")) {
             workbook = new HSSFWorkbook(fileInputStream);
         } else {
             workbook = new XSSFWorkbook(fileInputStream);
         }
 
         Sheet sheet = workbook.getSheetAt(0);
-        int columnIndex = -1;
-        int rows = sheet.getPhysicalNumberOfRows();
+        int dataColumnIndex = -1;
+
 
         //Vyhledání sloupce s názvem "Data"
         for (int i = 1; i < sheet.getRow(0).getLastCellNum(); i++) {
             String name = sheet.getRow(0).getCell(i).getStringCellValue();
             if (Objects.equals(name, "Data")) {
-                columnIndex = i;
+                dataColumnIndex = i;
             }
         }
 
         //Jestliže nebyl nalezen sloupec "Data", list primes bude obsahovat -1
-        if (columnIndex == -1) {
-            primes.add(-1);
-            return primes;
+        if (dataColumnIndex == -1) {
+            System.out.println("Nebyl nalezen sloupec \"Data\"");
+            return null;
         }
+
+        ArrayList<Integer> data = getCellValues(sheet, dataColumnIndex);
+        return data;
+    }
+
+
+
+    private ArrayList<Integer> getCellValues(Sheet sheet, int dataColumnIndex){
+        ArrayList<Integer> data = new ArrayList<>();
+        int numberOfRows = sheet.getPhysicalNumberOfRows();
 
         int cellValue = 0;
         //Proměnná pro kontrolu zda se jedná o číslo
         String stringValue = null;
         double value;
 
-        for (int i = 1; i < rows; i++) {
+        for (int i = 1; i < numberOfRows; i++) {
             Cell cell = sheet
                     .getRow(i)
-                    .getCell(columnIndex);
+                    .getCell(dataColumnIndex);
             if (cell != null) {
                 //Switch metoda z důvodu rozdílného čtení různých typů buněk
                 switch (cell.getCellType()) {
@@ -79,19 +82,24 @@ public class GetData {
                         }else continue;
                     }
                 }
-                if (findPrimes.findPrime(cellValue)) {
-                    primes.add(cellValue);
-                }
-
+                data.add(cellValue);
             }
         }
-        //Jestli nebudou nalezeny žádné prvočíslo, list primes bude obsahovat pouze -2
-        if (primes.size() == 0) primes.add(-2);
-        return primes;
+        return data;
+    }
+
+    //Funkce získává příponu souboru
+    private String getExtension(String path){
+        String extension = null;
+        int i = path.lastIndexOf('.');
+        if (i > 0) {
+            extension = path.substring(i);
+        }
+        return extension;
     }
 
     //Funkce zjišťuje zda je String číslo, např ("2" je číslo)
-    public boolean isNumeric(String str) {
+    private boolean isNumeric(String str) {
         try {
             Double.parseDouble(str);
             return true;
